@@ -137,7 +137,7 @@ def get_dataloader(config, phase):
         'ENMF': _get_AE_dataloader,
         'RaCT': _get_AE_dataloader,
         'RecVAE': _get_AE_dataloader,
-        'SRGNNPyGpp': _get_graph_dataloader,
+        'SRGNNPyG': _get_graph_dataloader,
     }
 
     if config['model'] in register_table:

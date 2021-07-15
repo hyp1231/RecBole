@@ -135,7 +135,7 @@ class DIENDataset(SequentialDataset):
         self.inter_feat = new_data
 
 
-class SRGNNPyGppDataset(SequentialDataset):
+class SRGNNPyGDataset(SequentialDataset):
     def __init__(self, config):
         super().__init__(config)
 

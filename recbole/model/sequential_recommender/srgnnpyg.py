@@ -9,6 +9,7 @@ SRGNNPyG
 Reference:
     Shu Wu et al. "Session-based Recommendation with Graph Neural Networks." in AAAI 2019.
     Implemented using PyTorch Geometric.
+    The original version of SRGNN in RecBole is adapted by Yujie Lu (yujielu1998@gmail.com) in 2020/9/30.
 
 Reference code:
     https://github.com/CRIPAC-DIG/SR-GNN
@@ -122,34 +123,9 @@ class SRGNNPyG(SequentialRecommender):
         for weight in self.parameters():
             weight.data.uniform_(-stdv, stdv)
 
-    def graph_construction(self, item_seq, item_seq_len):
-        x = [torch.zeros([1], dtype=torch.long, device=item_seq.device)]
-        edge_index = []
-        alias_inputs = []
-
-        tot_node_num = torch.ones([1], device=item_seq.device, dtype=torch.long)
-        for i, seq in enumerate(list(torch.chunk(item_seq, item_seq.shape[0]))):
-            seq, idx = torch.unique(seq, return_inverse=True)
-            x.append(seq)
-            alias_seq = idx.squeeze(0) + tot_node_num
-            alias_seq[item_seq_len[i]:] = 0
-            alias_inputs.append(alias_seq)
-            short_seq = alias_seq[:item_seq_len[i]]
-            # No repeat click
-            edge = torch.stack([short_seq[:-1], short_seq[1:]]).unique(dim=-1)
-            edge_index.append(edge)
-            tot_node_num += seq.shape[0]
-
-        x = torch.cat(x)
-        edge_index = torch.cat(edge_index, dim=-1)
-        alias_inputs = torch.stack(alias_inputs)
-        return x, edge_index, alias_inputs
-
-    def forward(self, item_seq, item_seq_len):
-        mask = item_seq.gt(0)
-        x, edge_index, alias_inputs = self.graph_construction(item_seq, item_seq_len)
-        x = self.item_embedding(x)
-        hidden = x
+    def forward(self, x, edge_index, alias_inputs, item_seq_len):
+        mask = alias_inputs.gt(0)
+        hidden = self.item_embedding(x)
         for i in range(self.step):
             hidden = self.gnncell(hidden, edge_index)
 
@@ -165,9 +141,11 @@ class SRGNNPyG(SequentialRecommender):
         return seq_output
 
     def calculate_loss(self, interaction):
-        item_seq = interaction[self.ITEM_SEQ]
+        x = interaction['x']
+        edge_index = interaction['edge_index']
+        alias_inputs = interaction['alias_inputs']
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
-        seq_output = self.forward(item_seq, item_seq_len)
+        seq_output = self.forward(x, edge_index, alias_inputs, item_seq_len)
         pos_items = interaction[self.POS_ITEM_ID]
         if self.loss_type == 'BPR':
             neg_items = interaction[self.NEG_ITEM_ID]
@@ -184,18 +162,23 @@ class SRGNNPyG(SequentialRecommender):
             return loss
 
     def predict(self, interaction):
-        item_seq = interaction[self.ITEM_SEQ]
-        item_seq_len = interaction[self.ITEM_SEQ_LEN]
         test_item = interaction[self.ITEM_ID]
-        seq_output = self.forward(item_seq, item_seq_len)
+        x = interaction['x']
+        edge_index = interaction['edge_index']
+        alias_inputs = interaction['alias_inputs']
+        item_seq_len = interaction[self.ITEM_SEQ_LEN]
+        seq_output = self.forward(x, edge_index, alias_inputs, item_seq_len)
         test_item_emb = self.item_embedding(test_item)
         scores = torch.mul(seq_output, test_item_emb).sum(dim=1)  # [B]
         return scores
 
     def full_sort_predict(self, interaction):
-        item_seq = interaction[self.ITEM_SEQ]
+        test_item = interaction[self.ITEM_ID]
+        x = interaction['x']
+        edge_index = interaction['edge_index']
+        alias_inputs = interaction['alias_inputs']
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
-        seq_output = self.forward(item_seq, item_seq_len)
+        seq_output = self.forward(x, edge_index, alias_inputs, item_seq_len)
         test_items_emb = self.item_embedding.weight
         scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))  # [B, n_items]
         return scores
