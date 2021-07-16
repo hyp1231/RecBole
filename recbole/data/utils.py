@@ -138,6 +138,7 @@ def get_dataloader(config, phase):
         'RaCT': _get_AE_dataloader,
         'RecVAE': _get_AE_dataloader,
         'SRGNNPyG': _get_graph_dataloader,
+        'GCEGNN': _get_graph_dataloader,
     }
 
     if config['model'] in register_table:

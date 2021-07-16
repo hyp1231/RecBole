@@ -4,6 +4,7 @@ from recbole.model.sequential_recommender.din import DIN
 from recbole.model.sequential_recommender.dien import DIEN
 from recbole.model.sequential_recommender.fdsa import FDSA
 from recbole.model.sequential_recommender.fpmc import FPMC
+from recbole.model.sequential_recommender.gcegnn import GCEGNN
 from recbole.model.sequential_recommender.gcsan import GCSAN
 from recbole.model.sequential_recommender.gru4rec import GRU4Rec
 from recbole.model.sequential_recommender.gru4recf import GRU4RecF
